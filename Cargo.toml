@@ -1,0 +1,8 @@
+[package]
+name = "groupby"
+version = "0.1.0"
+authors = ["Zikani Nyirenda Mwase <zikani@creditdatamw.com>"]
+
+[dependencies]
+chrono = "0.2"
+clap = "2.18.0"
