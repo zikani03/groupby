@@ -1,13 +1,16 @@
 extern crate chrono;
 extern crate clap;
 
-mod lib;
-mod group_by;
+pub mod group_by;
+pub mod file_entry;
 
-use clap::{App, Arg};
-use std::path::{Path, PathBuf};
-use lib::TimestampType;
-use lib::FileEntry;
+use clap::{App, Arg };
+
+use file_entry::{FileEntryTree,TimestampType, TreeDepth};
+
+pub const SUBDIRECTORY_INNER: &'static str = "├───";
+pub const SUBDIRECTORY_PIPE: &'static str = "│";
+pub const SUBDIRECTORY_LINK: &'static str = "└───";
 
 /// Usage
 ///
@@ -110,7 +113,15 @@ fn main() {
 
     let dry_run: bool = true; // matches.is_present("dry_run");
 
-    let group_depth = i32::from_str_radix(matches.value_of("depth").unwrap_or("1"), 10).unwrap();
+    let group_depth;
+    
+    match i32::from_str_radix(matches.value_of("depth").unwrap_or("1"), 10) {
+        Ok(1) => group_depth = TreeDepth::YEAR,
+        Ok(2) => group_depth = TreeDepth::MONTH,
+        Ok(3) => group_depth = TreeDepth::DAY,
+        Ok(_) => group_depth = TreeDepth::YEAR,
+        Err(_) => group_depth = TreeDepth::YEAR
+    };
 
     let timestamp_type = if created {
         TimestampType::CREATED
@@ -118,16 +129,12 @@ fn main() {
         TimestampType::MODIFIED
     };
     
-    match FileEntry::group_entries_by_date(Path::new(dir_name),
-                                timestamp_type,
-                                group_depth) {
-
+    match FileEntryTree::new(dir_name, timestamp_type, group_depth) {
         Some(grouped_entries) => {
-
             if dry_run {
                 println!("{}", grouped_entries)
             } else {
-                grouped_entries.write_to_disk()
+                print!("Failed to create grouped tree");
             }
         },
         None => ()
