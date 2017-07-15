@@ -98,12 +98,13 @@ func (t *Tree) AddEntry(file os.FileInfo) {
 	yearStr, monthStr, dayStr := fmt.Sprintf("%d", year), fmt.Sprintf("%d", month), fmt.Sprintf("%d", day)
 	var yearNode = t.Root.Search(yearStr)
 
+	// year node
+	if (yearNode == nil) {
+		yearNode = NewNode(yearStr, year, month, day)
+		t.Root.AddChild(yearNode)
+	}
+	
 	if t.MaxDepth == 1 {
-		// year node
-		if (yearNode == nil) {
-			yearNode = NewNode(yearStr, year, month, day)
-			t.Root.AddChild(yearNode)
-		}
 		yearNode.AddChild(node)
 	}
 
@@ -169,7 +170,7 @@ func (n *Node) Visit(visitor *PrintingVisitor, depth int) {
 	visitor.Visit(n, depth)
 	var cur = n.Children
 	for cur != nil {
-		visitor.Visit(cur, depth + 1)
+		cur.Visit(visitor, depth + 1)
 		cur = cur.Next
 	}
 }
