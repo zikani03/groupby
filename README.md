@@ -2,7 +2,7 @@ Group By
 ========
 
 > **THIS IS A WORK IN PROGRESS**
-> **Note:** Still learning Rust so code will be crappy. ;)
+> **Note:** Still learning Go so code will be crappy. ;)
 
 A simple CLI program to group files into directories by year, month or day
 by date created or modified.
@@ -43,9 +43,9 @@ my_messy_directory
 ## Building
 
 ```bash
-$ git clone https://github.com/zikani03/groupby
-$ cd groupby
-$ cargo build
+$ go get github.com/zikani03/groupby
+$ cd $GOPATH/src/github.com/zikani03/groupby
+$ go install
 ```
 
 ## LICENSE
