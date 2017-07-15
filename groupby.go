@@ -8,9 +8,11 @@ import (
 	"time"
 )
 
-// const SUBDIRECTORY_INNER: &'static str = "├───";
-// const SUBDIRECTORY_PIPE: &'static str = "│";
-// const SUBDIRECTORY_LINK: &'static str = "└───";
+var (
+	SUBDIRECTORY_INNER string = "├───"
+	SUBDIRECTORY_PIPE string = "│"
+	SUBDIRECTORY_LINK string = "└───"
+)
 
 type Tree struct {
 	Root *Node
@@ -31,6 +33,9 @@ type TreeVisitor interface {
 }
 
 type PrintingVisitor struct {
+	currentLevel int
+	previousLevel int
+	indentLevel int
 }
 
 func NewPrintingVisitor() *PrintingVisitor {
@@ -38,11 +43,27 @@ func NewPrintingVisitor() *PrintingVisitor {
 }
 
 func (p *PrintingVisitor) Visit(n *Node, depth int) {
-	if depth == 0 {
+	p.currentLevel = depth
+	if p.currentLevel == 0 {
+		p.indentLevel = 0
+		p.previousLevel = 0
 		fmt.Println("", n.FileName)
-	} else {
-		fmt.Println("-- ", n.FileName)
+		return
 	}
+	
+	if depth >= 2 {
+		p.indentLevel = depth
+		for i := 0; i < p.indentLevel - 1; i++ {
+			fmt.Printf("   ")
+		}
+	}
+
+	if !n.HasNext() {
+		fmt.Printf("└── %s\n", n.FileName)
+	} else {
+		fmt.Printf("├── %s\n", n.FileName)
+	} 
+	p.previousLevel = depth
 }
 
 func GetYMD(fileName string) (int, time.Month, int) {
@@ -148,6 +169,14 @@ func NewNode(fileName string, year int, month time.Month, day int) *Node {
 	}
 }
 
+func (n *Node) HasNext() bool {
+	return n.Next != nil
+}
+
+func (n *Node) HasChildren() bool {
+	return n.Children != nil
+}
+
 func (n *Node) AddChild(node *Node) {
 	var oldNext = n.Children
 	n.Children = node
@@ -201,14 +230,14 @@ func (n *Node) Visit(visitor *PrintingVisitor, depth int) {
 /// $ groupby -c -D -R -v -d 3 ./my_directory
 /// $ groupby --modified -DRv -d 3 ./my_directory
 /// ```
-///
-/// 2016
-/// ├─── Jan
-/// │    └── 01
-/// │        └── my_file.txt
-/// └── Feb
-///     └── 01
-///         └── my_file_2.txt
+/// ./my_directory
+/// └── 2016
+///     ├─── Jan
+///     │    └── 01
+///     │        └── my_file.txt
+///     └── Feb
+///         └── 01
+///             └── my_file_2.txt
 ///
 func main() {
 	flag.Parse()
