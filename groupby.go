@@ -1,45 +1,94 @@
 package main
 
 import (
-	"fmt"
 	"flag"
+	"fmt"
 	"os"
-	"strconv"
 	"time"
 )
 
-var (
-	SUBDIRECTORY_INNER string = "├───"
-	SUBDIRECTORY_PIPE string = "│"
-	SUBDIRECTORY_LINK string = "└───"
+const (
+	GROUPBY_VERSION    = "0.1.0"
+	SUBDIRECTORY_INNER = "├───"
+	SUBDIRECTORY_PIPE  = "│"
+	SUBDIRECTORY_LINK  = "└───"
 )
 
+var (
+	directory      string
+	created        bool
+	modified       bool
+	depth          int = 1
+	year           bool
+	month          bool
+	day            bool
+	flatten        bool
+	dryRun         bool
+	excludePattern string
+	verbose        bool
+	version        bool
+)
+
+func init() {
+	flag.StringVar(&directory, "DIRECTORY", "", "\tDirectory containing files to group")
+	flag.BoolVar(&created, "created", false, "\tGroup files by the date they were created")
+	flag.BoolVar(&modified, "modified", true, "\tGroup files by the date they were modified")
+	flag.IntVar(&depth, "depth", 1, "\tHow deep to create the directory hierarchy")
+	flag.BoolVar(&year, "year", true, "\tAlias for --depth=1, overrides --depth")
+	flag.BoolVar(&month, "month", true, "\tAlias for --depth=2, overrides --depth")
+	flag.BoolVar(&day, "day", true, "\tAlias for --depth=3, overrides --depth")
+	flag.BoolVar(&flatten, "flatten", false, "\tFlatten the created directory tree folders")
+	flag.BoolVar(&dryRun, "dry-run", false, "\tOnly show the output of how the files will be grouped")
+	flag.BoolVar(&dryRun, "preview", false, "\tOnly show the output of how the files will be grouped")
+	flag.BoolVar(&dryRun, "p", false, "\tOnly show the output of how the files will be grouped (shorthand)")
+	// flag.String(&exclude, "exclude", "Exclude files or directory matching a specified pattern")
+	// flag.BoolVar(&recurse, "R", "recurse" "Group files in subdirectories")
+	flag.BoolVar(&verbose, "verbose", true, "\tShow verbose output")
+	flag.BoolVar(&verbose, "v", true, "\tShow verbose output")
+	flag.BoolVar(&version, "version", false, "\tShow the program version and exit")
+}
+
+type GroupbyError struct {
+	Message string
+}
+
+func groupbyError(msg string) GroupbyError {
+	return GroupbyError{
+		Message: msg,
+	}
+}
+
+func (e GroupbyError) Error() string {
+	return e.Message
+}
+
 type Tree struct {
-	Root *Node
+	Root     *Node
 	MaxDepth int
 }
 
 type Node struct {
 	FileName string
-	Year int
-	Month time.Month
-	Day int
-	Next *Node
+	Year     int
+	Month    time.Month
+	Day      int
+	Next     *Node
 	Children *Node
 }
 
-type TreeVisitor interface {
+type NodeVisitor interface {
 	Visit(n *Node, depth int)
 }
 
 type PrintingVisitor struct {
-	currentLevel int
+	NodeVisitor
+	currentLevel  int
 	previousLevel int
-	indentLevel int
+	indentLevel   int
 }
 
 func NewPrintingVisitor() *PrintingVisitor {
-	return &PrintingVisitor {}
+	return &PrintingVisitor{}
 }
 
 func (p *PrintingVisitor) Visit(n *Node, depth int) {
@@ -50,10 +99,10 @@ func (p *PrintingVisitor) Visit(n *Node, depth int) {
 		fmt.Println("", n.FileName)
 		return
 	}
-	
+
 	if depth >= 2 {
 		p.indentLevel = depth
-		for i := 0; i < p.indentLevel - 1; i++ {
+		for i := 0; i < p.indentLevel-1; i++ {
 			fmt.Printf("   ")
 		}
 	}
@@ -62,13 +111,73 @@ func (p *PrintingVisitor) Visit(n *Node, depth int) {
 		fmt.Printf("└── %s\n", n.FileName)
 	} else {
 		fmt.Printf("├── %s\n", n.FileName)
-	} 
+	}
 	p.previousLevel = depth
+}
+
+type DirectoryVisitor struct {
+	NodeVisitor
+	rootDir          string
+	flatten          bool
+	currentLevel     int
+	currentLevelDir  string
+	previousLevel    int
+	previousLevelDir string
+	indentLevel      int
+}
+
+func NewDirectoryVisitor(root string, flatten bool) *DirectoryVisitor {
+	return &DirectoryVisitor{
+		rootDir: root,
+		flatten: flatten,
+	}
+}
+
+func (v *DirectoryVisitor) Visit(n *Node, depth int) {
+	v.currentLevel = depth
+	v.currentLevelDir = v.rootDir
+
+	if v.currentLevel == 0 {
+		v.indentLevel = 0
+		v.previousLevel = 0
+		fmt.Println("", n.FileName)
+		return
+	}
+
+	if depth >= 2 {
+		v.indentLevel = depth
+	}
+
+	if !n.HasNext() {
+		v.previousLevelDir = n.FileName
+		v.currentLevelDir = v.rootDir
+	} else {
+		v.previousLevelDir = v.currentLevelDir
+		v.currentLevelDir = n.FileName
+	}
+	v.previousLevel = depth
+}
+
+type Visitors struct {
+	NodeVisitor
+	visitors []NodeVisitor
+}
+
+func NewVisitors(visitors []NodeVisitor) *Visitors {
+	return &Visitors{
+		visitors: visitors,
+	}
+}
+
+func (v *Visitors) Visit(n *Node, depth int) {
+	for _, visitor := range v.visitors {
+		visitor.Visit(n, depth)
+	}
 }
 
 func GetYMD(fileName string) (int, time.Month, int) {
 	var stat, err = os.Stat(fileName)
-	
+
 	if err != nil {
 		// raise error here
 		panic(err)
@@ -84,32 +193,33 @@ func GetFileInfoYMD(fileInfo os.FileInfo) (int, time.Month, int) {
 
 func NewTree(directory string, maxDepth int) *Tree {
 	year, month, day := GetYMD(directory)
-	return &Tree{ 
-		Root: NewNode(directory, year, month, day),
+	return &Tree{
+		Root:     NewNode(directory, year, month, day),
 		MaxDepth: maxDepth,
 	}
 }
 
-func (t *Tree) Build() {
+func (t *Tree) Build() error {
 	file, err := os.Open(t.Root.FileName)
-	
+
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	files, err := file.Readdir(-1)
 
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	if files == nil {
-		panic(files)
+		return groupbyError("Directory is empty or cannot be read")
 	}
 
 	for _, f := range files {
 		t.AddEntry(f)
 	}
+	return nil
 }
 
 func (t *Tree) AddEntry(file os.FileInfo) {
@@ -120,11 +230,11 @@ func (t *Tree) AddEntry(file os.FileInfo) {
 	var yearNode = t.Root.Search(yearStr)
 
 	// year node
-	if (yearNode == nil) {
+	if yearNode == nil {
 		yearNode = NewNode(yearStr, year, month, day)
 		t.Root.AddChild(yearNode)
 	}
-	
+
 	if t.MaxDepth == 1 {
 		yearNode.AddChild(node)
 	}
@@ -141,7 +251,7 @@ func (t *Tree) AddEntry(file os.FileInfo) {
 		if t.MaxDepth == 3 {
 			var dayNode = monthNode.Search(dayStr)
 
-			if (dayNode == nil) {
+			if dayNode == nil {
 				dayNode = NewNode(dayStr, year, month, day)
 				monthNode.AddChild(dayNode)
 			}
@@ -154,17 +264,17 @@ func (t *Tree) AddEntry(file os.FileInfo) {
 	}
 }
 
-func (t *Tree) Visit(visitor *PrintingVisitor) {
+func (t *Tree) Visit(visitor NodeVisitor) {
 	t.Root.Visit(visitor, 0)
 }
 
 func NewNode(fileName string, year int, month time.Month, day int) *Node {
-	return &Node {
+	return &Node{
 		FileName: fileName,
-		Year: year,
-		Month: month,
-		Day: day,
-		Next: nil,
+		Year:     year,
+		Month:    month,
+		Day:      day,
+		Next:     nil,
 		Children: nil,
 	}
 }
@@ -195,11 +305,11 @@ func (n *Node) Search(value string) *Node {
 	return nil
 }
 
-func (n *Node) Visit(visitor *PrintingVisitor, depth int) {
+func (n *Node) Visit(visitor NodeVisitor, depth int) {
 	visitor.Visit(n, depth)
 	var cur = n.Children
 	for cur != nil {
-		cur.Visit(visitor, depth + 1)
+		cur.Visit(visitor, depth+1)
 		cur = cur.Next
 	}
 }
@@ -213,11 +323,14 @@ func (n *Node) Visit(visitor *PrintingVisitor, depth int) {
 /// ```
 /// -c   --created Group files by the date they were created
 /// -m   --modified Group files by the date they were modified
-/// -n   --dry-run Show the output of how the files will be grouped
-/// -d   --depth N How deep to create the directory hierarchy (maximum: 3)
-///                corresponding to 1 - year, 2 - month, 3 - day
-/// -D   --group-dirs Move directories into groups as well - by default only
-///                   regular files are grouped
+/// -d   --depth N How deep to create the directory hierarchy
+///      --year  Alias for --depth=1
+///      --month Alias for --depth=2
+///      --day   Alias for --depth=3
+/// -f   --flatten Flatten the created directory tree folders
+/// -x   --exclude PATTERN
+/// -p   --dry-run Show the output of how the files will be grouped
+/// -p   --preview Alias for --dry-run
 /// -R   --recurse Group files in subdirectories
 /// -h   --help Show the help information and exit
 /// -v   --verbose Show verbose output
@@ -227,8 +340,8 @@ func (n *Node) Visit(visitor *PrintingVisitor, depth int) {
 /// ## Examples
 ///
 /// ```
-/// $ groupby -c -D -R -v -d 3 ./my_directory
-/// $ groupby --modified -DRv -d 3 ./my_directory
+/// $ groupby -day -modified -preview ./my_directory
+/// $ groupby -d=3 -mp ./my_directory
 /// ```
 /// ./my_directory
 /// └── 2016
@@ -241,17 +354,48 @@ func (n *Node) Visit(visitor *PrintingVisitor, depth int) {
 ///
 func main() {
 	flag.Parse()
-	directory := flag.Arg(0)
 
-	depth, err := strconv.Atoi(flag.Arg(1))
-
-	if err != nil {
-		panic(err)
+	if _, err := os.Stat(directory); err != nil {
+		flag.PrintDefaults()
+		os.Exit(0)
 	}
 
+	if depth > 3 || depth < 1 {
+		// Use default depth if the depth is out of range
+		// TODO: perhaps we should error out?
+		depth = 1
+	}
+	// depth, err := strconv.Atoi(flag.Arg(1))
+	// Build the tree using the deepest depth argument
+	if day {
+		depth = 3
+	} else if month {
+		depth = 2
+	} else if year {
+		depth = 1
+	}
+	if version {
+		fmt.Println("groupby ", GROUPBY_VERSION, " - Group files and directories by the date they were created or modified")
+		fmt.Println("By Zikani Nyirenda Mwase ")
+		os.Exit(0)
+	}
+	// TODO: Add argument to tree constructor for which file time to use
 	var tree = NewTree(directory, depth)
-
-	tree.Build()
-
-	tree.Visit(NewPrintingVisitor())
+	err := tree.Build()
+	if err != nil {
+		// TODO: error out?
+	}
+	printingVisitor := NewPrintingVisitor()
+	if dryRun {
+		tree.Visit(printingVisitor)
+		os.Exit(-1)
+		return
+	}
+	directoryVisitor := NewDirectoryVisitor(directory, flatten)
+	multiVisitor := NewVisitors(append(make([]NodeVisitor, 2), printingVisitor, directoryVisitor))
+	if verbose {
+		tree.Visit(multiVisitor)
+	} else {
+		tree.Visit(directoryVisitor)
+	}
 }
