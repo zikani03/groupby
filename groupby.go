@@ -4,6 +4,8 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -23,6 +25,7 @@ var (
 	month          bool
 	day            bool
 	flatten        bool
+	includeHidden  bool
 	dryRun         bool
 	excludePattern string
 	verbose        bool
@@ -34,13 +37,14 @@ func init() {
 	flag.BoolVar(&created, "created", false, "\tGroup files by the date they were created")
 	flag.BoolVar(&modified, "modified", true, "\tGroup files by the date they were modified")
 	flag.IntVar(&depth, "depth", 1, "\tHow deep to create the directory hierarchy")
-	flag.BoolVar(&year, "year", true, "\tAlias for --depth=1, overrides --depth")
-	flag.BoolVar(&month, "month", true, "\tAlias for --depth=2, overrides --depth")
-	flag.BoolVar(&day, "day", true, "\tAlias for --depth=3, overrides --depth")
+	flag.BoolVar(&year, "year", false, "\tAlias for --depth=1, overrides --depth")
+	flag.BoolVar(&month, "month", false, "\tAlias for --depth=2, overrides --depth")
+	flag.BoolVar(&day, "day", false, "\tAlias for --depth=3, overrides --depth")
 	flag.BoolVar(&flatten, "flatten", false, "\tFlatten the created directory tree folders")
 	flag.BoolVar(&dryRun, "dry-run", false, "\tOnly show the output of how the files will be grouped")
 	flag.BoolVar(&dryRun, "preview", false, "\tOnly show the output of how the files will be grouped")
 	flag.BoolVar(&dryRun, "p", false, "\tOnly show the output of how the files will be grouped (shorthand)")
+	flag.BoolVar(&includeHidden, "a", false, "\tInclude hidden files and directories (starting with .)")
 	// flag.String(&exclude, "exclude", "Exclude files or directory matching a specified pattern")
 	// flag.BoolVar(&recurse, "R", "recurse" "Group files in subdirectories")
 	flag.BoolVar(&verbose, "verbose", true, "\tShow verbose output")
@@ -96,7 +100,7 @@ func (p *PrintingVisitor) Visit(n *Node, depth int) {
 	if p.currentLevel == 0 {
 		p.indentLevel = 0
 		p.previousLevel = 0
-		fmt.Println("", n.FileName)
+		fmt.Println(n.FileName)
 		return
 	}
 
@@ -108,11 +112,54 @@ func (p *PrintingVisitor) Visit(n *Node, depth int) {
 	}
 
 	if !n.HasNext() {
-		fmt.Printf("└── %s\n", n.FileName)
+		if depth == 2 {
+			fmt.Println("└──", MonthAsName(n.FileName))
+		} else {
+			fmt.Println("└──", n.FileName)
+		}
 	} else {
-		fmt.Printf("├── %s\n", n.FileName)
+		if depth == 2 {
+			fmt.Println("├──", MonthAsName(n.FileName))
+		} else {
+			fmt.Println("├──", n.FileName)
+		}
 	}
 	p.previousLevel = depth
+}
+
+func MonthAsName(monthStr string) string {
+	monthIdx, err := strconv.Atoi(monthStr)
+	if err != nil {
+		return monthStr
+	}
+	
+	switch monthIdx {
+	case 1:
+		return "January"
+	case 2:
+		return "February"
+	case 3:
+		return "March"
+	case 4:
+		return "April"
+	case 5:
+		return "May"
+	case 6:
+		return "June"
+	case 7:
+		return "July"
+	case 8:
+		return "August"
+	case 9:
+		return "September"
+	case 10:
+		return "October"
+	case 11:
+		return "November"
+	case 12:
+		return "December"
+	}
+	return ""
 }
 
 type DirectoryVisitor struct {
@@ -223,6 +270,11 @@ func (t *Tree) Build() error {
 }
 
 func (t *Tree) AddEntry(file os.FileInfo) {
+
+	if strings.HasPrefix(file.Name(), ".") && !includeHidden {
+		return
+	}
+
 	year, month, day := GetFileInfoYMD(file)
 	var node = NewNode(file.Name(), year, month, day)
 
