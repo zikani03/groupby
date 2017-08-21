@@ -231,6 +231,7 @@ type DirectoryVisitor struct {
 	NodeVisitor
 	rootDir          string
 	flatten          bool
+	maxDepth         int
 	currentLevel     int
 	currentLevelDir  string
 	previousLevel    int
@@ -239,11 +240,12 @@ type DirectoryVisitor struct {
 	pathParts        []string
 }
 
-func NewDirectoryVisitor(root string, flatten bool) *DirectoryVisitor {
+func NewDirectoryVisitor(root string, flatten bool, maxDepth int) *DirectoryVisitor {
 	return &DirectoryVisitor{
 		rootDir:   root,
 		flatten:   flatten,
 		pathParts: []string{root, "", "", ""},
+		maxDepth: maxDepth,
 	}
 }
 
@@ -270,7 +272,7 @@ func (v *DirectoryVisitor) Visit(n *Node, depth int) {
 		v.pathParts[depth] = ""
 	}
 
-	dirs := v.pathParts[:3]
+	dirs := v.pathParts[:v.maxDepth]
 	err := os.MkdirAll(path.Join(dirs...), os.ModeType)
 	if err != nil {
 		// error
@@ -483,7 +485,7 @@ func main() {
 		os.Exit(-1)
 		return
 	}
-	directoryVisitor := NewDirectoryVisitor(directory, flatten)
+	directoryVisitor := NewDirectoryVisitor(directory, flatten, depth)
 	multiVisitor := NewVisitors(printingVisitor, directoryVisitor)
 	if verbose {
 		tree.Visit(multiVisitor)
