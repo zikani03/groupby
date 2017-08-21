@@ -444,44 +444,6 @@ func (n *Node) Visit(visitor NodeVisitor, depth int) {
 	}
 }
 
-/// Usage
-///
-/// groupby [options] DIRECTORY
-///
-/// ## Options
-///
-/// ```
-/// -c   --created Group files by the date they were created
-/// -m   --modified Group files by the date they were modified
-/// -d   --depth N How deep to create the directory hierarchy
-///      --year  Alias for --depth=1
-///      --month Alias for --depth=2
-///      --day   Alias for --depth=3
-/// -f   --flatten Flatten the created directory tree folders
-/// -x   --exclude PATTERN
-/// -p   --dry-run Show the output of how the files will be grouped
-/// -p   --preview Alias for --dry-run
-/// -R   --recurse Group files in subdirectories
-/// -h   --help Show the help information and exit
-/// -v   --verbose Show verbose output
-///      --version Show the program version
-/// ```
-///
-/// ## Examples
-///
-/// ```
-/// $ groupby -day -modified -preview ./my_directory
-/// $ groupby -d=3 -mp ./my_directory
-/// ```
-/// ./my_directory
-/// └── 2016
-///     ├─── Jan
-///     │    └── 01
-///     │        └── my_file.txt
-///     └── Feb
-///         └── 01
-///             └── my_file_2.txt
-///
 func main() {
 	flag.Parse()
 
