@@ -449,6 +449,12 @@ func (n *Node) Visit(visitor NodeVisitor, depth int) {
 func main() {
 	flag.Parse()
 
+	if version {
+		fmt.Println("groupby ", GROUPBY_VERSION, " - Group files and directories by the date they were created or modified")
+		fmt.Println("By Zikani Nyirenda Mwase ")
+		os.Exit(0)
+	}
+	
 	if _, err := os.Stat(directory); err != nil {
 		flag.PrintDefaults()
 		os.Exit(0)
@@ -468,11 +474,7 @@ func main() {
 	} else if year {
 		depth = 1
 	}
-	if version {
-		fmt.Println("groupby ", GROUPBY_VERSION, " - Group files and directories by the date they were created or modified")
-		fmt.Println("By Zikani Nyirenda Mwase ")
-		os.Exit(0)
-	}
+
 	// TODO: Add argument to tree constructor for which file time to use
 	var tree = NewTree(directory, depth)
 	err := tree.Build()
