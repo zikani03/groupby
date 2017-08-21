@@ -3,7 +3,11 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
+	"log"
 	"os"
+	"path"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -132,7 +136,7 @@ func MonthAsName(monthStr string) string {
 	if err != nil {
 		return monthStr
 	}
-	
+
 	switch monthIdx {
 	case 1:
 		return "January"
@@ -162,6 +166,67 @@ func MonthAsName(monthStr string) string {
 	return ""
 }
 
+// Adapted from: https://stackoverflow.com/a/21067803
+// CopyFile copies a file from src to dst. If src and dst files exist, and are
+// the same, then return success. Otherise, attempt to create a hard link
+// between the two files. If that fail, copy the file contents from src to dst.
+func CopyFile(src, dst string) (err error) {
+	sfi, err := os.Stat(src)
+	if err != nil {
+		return
+	}
+	if !sfi.Mode().IsRegular() {
+		// cannot copy non-regular files (e.g., directories,
+		// symlinks, devices, etc.)
+		return fmt.Errorf("CopyFile: non-regular source file %s (%q)", sfi.Name(), sfi.Mode().String())
+	}
+	dfi, err := os.Stat(dst)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return
+		}
+	} else {
+		if !(dfi.Mode().IsRegular()) {
+			return fmt.Errorf("CopyFile: non-regular destination file %s (%q)", dfi.Name(), dfi.Mode().String())
+		}
+		if os.SameFile(sfi, dfi) {
+			return
+		}
+	}
+	if err = os.Link(src, dst); err == nil {
+		return
+	}
+	err = copyFileContents(src, dst)
+	return
+}
+
+// copyFileContents copies the contents of the file named src to the file named
+// by dst. The file will be created if it does not already exist. If the
+// destination file exists, all it's contents will be replaced by the contents
+// of the source file.
+func copyFileContents(src, dst string) (err error) {
+	in, err := os.Open(src)
+	if err != nil {
+		return
+	}
+	defer in.Close()
+	out, err := os.Create(dst)
+	if err != nil {
+		return
+	}
+	defer func() {
+		cerr := out.Close()
+		if err == nil {
+			err = cerr
+		}
+	}()
+	if _, err = io.Copy(out, in); err != nil {
+		return
+	}
+	err = out.Sync()
+	return
+}
+
 type DirectoryVisitor struct {
 	NodeVisitor
 	rootDir          string
@@ -171,37 +236,46 @@ type DirectoryVisitor struct {
 	previousLevel    int
 	previousLevelDir string
 	indentLevel      int
+	pathParts        []string
 }
 
 func NewDirectoryVisitor(root string, flatten bool) *DirectoryVisitor {
 	return &DirectoryVisitor{
-		rootDir: root,
-		flatten: flatten,
+		rootDir:   root,
+		flatten:   flatten,
+		pathParts: []string{root, "", "", ""},
 	}
 }
 
 func (v *DirectoryVisitor) Visit(n *Node, depth int) {
 	v.currentLevel = depth
 	v.currentLevelDir = v.rootDir
-
 	if v.currentLevel == 0 {
 		v.indentLevel = 0
 		v.previousLevel = 0
-		fmt.Println("", n.FileName)
+		v.pathParts[1] = ""
+		v.pathParts[2] = ""
+		v.pathParts[3] = ""
 		return
 	}
 
-	if depth >= 2 {
-		v.indentLevel = depth
+	if depth == 2 {
+		v.pathParts[depth-1] = MonthAsName(n.FileName)
+	} else {
+		v.pathParts[depth-1] = n.FileName
 	}
 
-	if !n.HasNext() {
-		v.previousLevelDir = n.FileName
-		v.currentLevelDir = v.rootDir
-	} else {
-		v.previousLevelDir = v.currentLevelDir
-		v.currentLevelDir = n.FileName
+	// We're probably at a month
+	if depth == 3 && !n.HasNext() {
+		v.pathParts[depth] = ""
 	}
+
+	dirs := v.pathParts[:3]
+	err := os.MkdirAll(path.Join(dirs...), os.ModeType)
+	if err != nil {
+		// error
+	}
+	CopyFile(path.Join(v.rootDir, n.FileName), path.Join(v.pathParts...))
 	v.previousLevel = depth
 }
 
@@ -210,7 +284,7 @@ type Visitors struct {
 	visitors []NodeVisitor
 }
 
-func NewVisitors(visitors []NodeVisitor) *Visitors {
+func NewVisitors(visitors ...NodeVisitor) *Visitors {
 	return &Visitors{
 		visitors: visitors,
 	}
@@ -240,8 +314,12 @@ func GetFileInfoYMD(fileInfo os.FileInfo) (int, time.Month, int) {
 
 func NewTree(directory string, maxDepth int) *Tree {
 	year, month, day := GetYMD(directory)
+	dirPath, err := filepath.Abs(directory)
+	if err != nil {
+		log.Fatal(err)
+	}
 	return &Tree{
-		Root:     NewNode(directory, year, month, day),
+		Root:     NewNode(dirPath, year, month, day),
 		MaxDepth: maxDepth,
 	}
 }
@@ -444,7 +522,7 @@ func main() {
 		return
 	}
 	directoryVisitor := NewDirectoryVisitor(directory, flatten)
-	multiVisitor := NewVisitors(append(make([]NodeVisitor, 2), printingVisitor, directoryVisitor))
+	multiVisitor := NewVisitors(printingVisitor, directoryVisitor)
 	if verbose {
 		tree.Visit(multiVisitor)
 	} else {
