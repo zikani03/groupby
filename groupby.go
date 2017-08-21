@@ -271,13 +271,24 @@ func (v *DirectoryVisitor) Visit(n *Node, depth int) {
 	if depth == 3 && !n.HasNext() {
 		v.pathParts[depth] = ""
 	}
-
 	dirs := v.pathParts[:v.maxDepth]
+	if flatten && n.HasChildren() {
+		return
+	}
+	var dest string
+	source := path.Join(v.rootDir, n.FileName)
+	if flatten {
+		dirs = []string{v.rootDir, strings.Join(dirs, "-")}
+		dest = path.Join(strings.Join(v.pathParts[:v.maxDepth], "-"), n.FileName)
+		// fmt.Println("Using dest: ", dest)
+	} else {
+		dest = path.Join(v.pathParts...)
+	}
 	err := os.MkdirAll(path.Join(dirs...), os.ModeType)
 	if err != nil {
 		// error
 	}
-	CopyFile(path.Join(v.rootDir, n.FileName), path.Join(v.pathParts...))
+	CopyFile(source, dest)
 	v.previousLevel = depth
 }
 
@@ -454,7 +465,7 @@ func main() {
 		fmt.Println("By Zikani Nyirenda Mwase ")
 		os.Exit(0)
 	}
-	
+
 	if _, err := os.Stat(directory); err != nil {
 		flag.PrintDefaults()
 		os.Exit(0)
