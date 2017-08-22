@@ -10,15 +10,12 @@ by date created or modified.
 groupby [OPTIONS]
 
 Usage of groupby:
-  -DIRECTORY string
-                Directory containing files to group
+  -d            Directory containing files to group
   -a            Include hidden files and directories (starting with .)
   -created
                 Group files by the date they were created
   -day
                 Alias for --depth=3, overrides --depth
-  -depth int
-                How deep to create the directory hierarchy (default 1)
   -dry-run
                 Only show the output of how the files will be grouped
   -flatten
@@ -41,16 +38,13 @@ Usage of groupby:
 
 ## Example Usage
 
-Let's say you have a gazillion files in `my_messy_directory` and you'd like to
-group them by the date they were created.
-
-You should be able to use the following command
+Once installed, you should be able to use the `groupby` as in the example, below:
 
 ```bash
-$ groupby -day -DIRECTORY=./groupby
+$ groupby -day -d=./groupby
 ```
 
-This will group your files into year subdirectories and then month subdirectories
+This will group your files into year, month and then day subdirectories
 so that it looks like This
 
 ```

@@ -37,13 +37,12 @@ var (
 )
 
 func init() {
-	flag.StringVar(&directory, "DIRECTORY", "", "\tDirectory containing files to group")
+	flag.StringVar(&directory, "d", "", "\tDirectory containing files to group")
 	flag.BoolVar(&created, "created", false, "\tGroup files by the date they were created")
 	flag.BoolVar(&modified, "modified", true, "\tGroup files by the date they were modified")
-	flag.IntVar(&depth, "depth", 1, "\tHow deep to create the directory hierarchy")
-	flag.BoolVar(&year, "year", false, "\tAlias for --depth=1, overrides --depth")
-	flag.BoolVar(&month, "month", false, "\tAlias for --depth=2, overrides --depth")
-	flag.BoolVar(&day, "day", false, "\tAlias for --depth=3, overrides --depth")
+	flag.BoolVar(&year, "year", false, "\tGroup by year only")
+	flag.BoolVar(&month, "month", false, "\tGroup by year, and then month")
+	flag.BoolVar(&day, "day", false, "\tGroup by year, month and then day")
 	flag.BoolVar(&flatten, "flatten", false, "\tFlatten the created directory tree folders")
 	flag.BoolVar(&dryRun, "dry-run", false, "\tOnly show the output of how the files will be grouped")
 	flag.BoolVar(&dryRun, "preview", false, "\tOnly show the output of how the files will be grouped")
@@ -471,12 +470,6 @@ func main() {
 		os.Exit(0)
 	}
 
-	if depth > 3 || depth < 1 {
-		// Use default depth if the depth is out of range
-		// TODO: perhaps we should error out?
-		depth = 1
-	}
-	// depth, err := strconv.Atoi(flag.Arg(1))
 	// Build the tree using the deepest depth argument
 	if day {
 		depth = 3
