@@ -11,6 +11,8 @@ groupby [OPTIONS]
 
 Usage of groupby:
   -d            Directory containing files to group
+  -ignore-directories
+                Ignore directories, only group files
   -a            Include hidden files and directories (starting with .)
   -created
                 Group files by the date they were created

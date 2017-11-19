@@ -21,23 +21,25 @@ const (
 )
 
 var (
-	directory      string
-	created        bool
-	modified       bool
-	depth          int = 1
-	year           bool
-	month          bool
-	day            bool
-	flatten        bool
-	includeHidden  bool
-	dryRun         bool
-	excludePattern string
-	verbose        bool
-	version        bool
+	directory         string
+	ignoreDirectories bool
+	created           bool
+	modified          bool
+	depth             int = 1
+	year              bool
+	month             bool
+	day               bool
+	flatten           bool
+	includeHidden     bool
+	dryRun            bool
+	excludePattern    string
+	verbose           bool
+	version           bool
 )
 
 func init() {
 	flag.StringVar(&directory, "d", "", "\tDirectory containing files to group")
+	flag.BoolVar(&ignoreDirectories, "ignore-directories", false, "\tIgnore directories and only group files")
 	flag.BoolVar(&created, "created", false, "\tGroup files by the date they were created")
 	flag.BoolVar(&modified, "modified", true, "\tGroup files by the date they were modified")
 	flag.BoolVar(&year, "year", false, "\tGroup by year only")
@@ -244,7 +246,7 @@ func NewDirectoryVisitor(root string, flatten bool, maxDepth int) *DirectoryVisi
 		rootDir:   root,
 		flatten:   flatten,
 		pathParts: []string{root, "", "", ""},
-		maxDepth: maxDepth,
+		maxDepth:  maxDepth,
 	}
 }
 
@@ -354,7 +356,11 @@ func (t *Tree) Build() error {
 	}
 
 	for _, f := range files {
-		t.AddEntry(f)
+		if ignoreDirectories && f.IsDir() {
+			continue
+		} else {
+			t.AddEntry(f)
+		}
 	}
 	return nil
 }
