@@ -275,6 +275,9 @@ func (v *DirectoryVisitor) Visit(n *Node, depth int) {
 	dest = path.Join(destParts...)
 	// Create the destination directories
 	perm := os.FileMode(0755)
+	rootStat, _ := os.Stat(directory)
+	// use permissions of the root directory
+	perm = rootStat.Mode()
 	err := os.MkdirAll(path.Join(dirs...), perm)
 	if err != nil {
 		// error
