@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"path"
@@ -22,6 +21,8 @@ const (
 
 var (
 	directory         string
+	outputDirectory   string
+	copyOnly          bool
 	ignoreDirectories bool
 	created           bool
 	modified          bool
@@ -39,6 +40,8 @@ var (
 
 func init() {
 	flag.StringVar(&directory, "d", "", "\tDirectory containing files to group")
+	flag.StringVar(&outputDirectory, "o", "", "\tDirectory to move grouped files to")
+	flag.BoolVar(&copyOnly, "copy-only", false, "\tOnly copy files, do not move them")
 	flag.BoolVar(&ignoreDirectories, "ignore-directories", false, "\tIgnore directories and only group files")
 	flag.BoolVar(&created, "created", false, "\tGroup files by the date they were created")
 	flag.BoolVar(&modified, "modified", true, "\tGroup files by the date they were modified")
@@ -52,8 +55,8 @@ func init() {
 	flag.BoolVar(&includeHidden, "a", false, "\tInclude hidden files and directories (starting with .)")
 	// flag.String(&exclude, "exclude", "Exclude files or directory matching a specified pattern")
 	// flag.BoolVar(&recurse, "R", "recurse" "Group files in subdirectories")
-	flag.BoolVar(&verbose, "verbose", true, "\tShow verbose output")
-	flag.BoolVar(&verbose, "v", true, "\tShow verbose output")
+	flag.BoolVar(&verbose, "verbose", false, "\tShow verbose output")
+	flag.BoolVar(&verbose, "v", false, "\tShow verbose output")
 	flag.BoolVar(&version, "version", false, "\tShow the program version and exit")
 }
 
@@ -168,10 +171,11 @@ func MonthAsName(monthStr string) string {
 }
 
 // Adapted from: https://stackoverflow.com/a/21067803
-// CopyFile copies a file from src to dst. If src and dst files exist, and are
-// the same, then return success. Otherise, attempt to create a hard link
-// between the two files. If that fail, copy the file contents from src to dst.
-func CopyFile(src, dst string) (err error) {
+// moveOrCopyFile moves or copies a file from src to dst.
+// If src and dst files exist, and are the same, then return success.
+// Attempt to move the file using os.Rename if the copyOnly flag is false
+// Otherwise, we attempt to create a hard link between the two files.
+func moveOrCopyFile(src, dst string) (err error) {
 	sfi, err := os.Stat(src)
 	if err != nil {
 		return
@@ -179,7 +183,7 @@ func CopyFile(src, dst string) (err error) {
 	if !sfi.Mode().IsRegular() {
 		// cannot copy non-regular files (e.g., directories,
 		// symlinks, devices, etc.)
-		return fmt.Errorf("CopyFile: non-regular source file %s (%q)", sfi.Name(), sfi.Mode().String())
+		return fmt.Errorf("moveOrCopyFile: non-regular source file %s (%q)", sfi.Name(), sfi.Mode().String())
 	}
 	dfi, err := os.Stat(dst)
 	if err != nil {
@@ -188,44 +192,24 @@ func CopyFile(src, dst string) (err error) {
 		}
 	} else {
 		if !(dfi.Mode().IsRegular()) {
-			return fmt.Errorf("CopyFile: non-regular destination file %s (%q)", dfi.Name(), dfi.Mode().String())
+			return fmt.Errorf("moveOrCopyFile: non-regular destination file %s (%q)", dfi.Name(), dfi.Mode().String())
 		}
 		if os.SameFile(sfi, dfi) {
 			return
 		}
 	}
+
+	// User wants to actually move the files
+	if !copyOnly {
+		if err = os.Rename(src, dst); err == nil {
+			return
+		}
+	}
+	// Creates a hardlink to the source
 	if err = os.Link(src, dst); err == nil {
 		return
 	}
-	err = copyFileContents(src, dst)
-	return
-}
-
-// copyFileContents copies the contents of the file named src to the file named
-// by dst. The file will be created if it does not already exist. If the
-// destination file exists, all it's contents will be replaced by the contents
-// of the source file.
-func copyFileContents(src, dst string) (err error) {
-	in, err := os.Open(src)
-	if err != nil {
-		return
-	}
-	defer in.Close()
-	out, err := os.Create(dst)
-	if err != nil {
-		return
-	}
-	defer func() {
-		cerr := out.Close()
-		if err == nil {
-			err = cerr
-		}
-	}()
-	if _, err = io.Copy(out, in); err != nil {
-		return
-	}
-	err = out.Sync()
-	return
+	return err
 }
 
 type DirectoryVisitor struct {
@@ -272,24 +256,31 @@ func (v *DirectoryVisitor) Visit(n *Node, depth int) {
 	if depth == 3 && !n.HasNext() {
 		v.pathParts[depth] = ""
 	}
-	dirs := v.pathParts[:v.maxDepth]
+	dirs := []string{outputDirectory}
+	dirs = append(dirs, v.pathParts[:v.maxDepth]...)
 	if flatten && n.HasChildren() {
 		return
 	}
 	var dest string
 	source := path.Join(v.rootDir, n.FileName)
+	destParts := []string{outputDirectory}
 	if flatten {
-		dirs = []string{v.rootDir, strings.Join(dirs, "-")}
-		dest = path.Join(strings.Join(v.pathParts[:v.maxDepth], "-"), n.FileName)
-		// fmt.Println("Using dest: ", dest)
+		dirs = []string{v.rootDir, strings.Join(v.pathParts[:v.maxDepth], "-")}
+		flattenedParent := strings.Join(v.pathParts[:v.maxDepth], "-")
+		destParts = append(destParts, flattenedParent)
+		destParts = append(destParts, n.FileName)
 	} else {
-		dest = path.Join(v.pathParts...)
+		destParts = append(destParts, v.pathParts...)
 	}
-	err := os.MkdirAll(path.Join(dirs...), os.ModeType)
+	dest = path.Join(destParts...)
+	// Create the destination directories
+	perm := os.FileMode(0755)
+	err := os.MkdirAll(path.Join(dirs...), perm)
 	if err != nil {
 		// error
 	}
-	CopyFile(source, dest)
+	// Move the file from the source to the directory
+	moveOrCopyFile(source, dest)
 	v.previousLevel = depth
 }
 
@@ -476,6 +467,10 @@ func main() {
 		os.Exit(0)
 	}
 
+	if outputDirectory == "" {
+		outputDirectory = directory
+	}
+
 	// Build the tree using the deepest depth argument
 	if day {
 		depth = 3
@@ -489,7 +484,8 @@ func main() {
 	var tree = NewTree(directory, depth)
 	err := tree.Build()
 	if err != nil {
-		// TODO: error out?
+		fmt.Println("Failed to build directory tree")
+		os.Exit(1)
 	}
 	printingVisitor := NewPrintingVisitor()
 	if dryRun {
