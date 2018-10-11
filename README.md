@@ -1,8 +1,7 @@
 Group By
 ========
 
-A simple CLI program to group files into directories by year, month or day
-by date created or modified.
+A simple CLI program to group files into directories by year, month or day created (or modified).
 
 ## Usage
 
@@ -10,32 +9,37 @@ by date created or modified.
 groupby [OPTIONS]
 
 Usage of groupby:
-  -d            Directory containing files to group
-  -ignore-directories
-                Ignore directories, only group files
   -a            Include hidden files and directories (starting with .)
+  -copy-only
+                Only copy files, do not move them
   -created
-                Group files by the date they were created
+                Group files by the date they were created (default)
+  -d DIRECTORY
+                Directory containing files to group
   -day
-                Alias for --depth=3, overrides --depth
+                Group by year, month and then day
   -dry-run
                 Only show the output of how the files will be grouped
   -flatten
                 Flatten the created directory tree folders
+  -ignore-directories
+                Ignore directories and only group files
   -modified
                 Group files by the date they were modified (default true)
   -month
-                Alias for --depth=2, overrides --depth
+                Group by year, and then month
+  -o DIRECTORY
+                Directory to move grouped files to
   -p            Only show the output of how the files will be grouped (shorthand)
   -preview
                 Only show the output of how the files will be grouped
-  -v            Show verbose output (default true)
+  -v            Show verbose output
   -verbose
-                Show verbose output (default true)
+                Show verbose output
   -version
                 Show the program version and exit
   -year
-                Alias for --depth=1, overrides --depth
+                Group by year only
 ```
 
 ## Example Usage
@@ -65,7 +69,7 @@ so that it looks like This
 
 ```bash
 $ go get -u github.com/zikani03/groupby
-$ $GOPATH/bin/groupby --help
+$ $GOPATH/bin/groupby -h
 ```
  
 ## LICENSE
@@ -74,4 +78,4 @@ MIT
 
 ---
 
-Copyright (c) 2017, Zikani 
+Copyright (c) 2018, Zikani 
