@@ -178,22 +178,17 @@ func MonthAsName(monthStr string) string {
 func moveOrCopyFile(src, dst string) (err error) {
 	sfi, err := os.Stat(src)
 	if err != nil {
-		return
+		return err
 	}
-	if !sfi.Mode().IsRegular() {
-		// cannot copy non-regular files (e.g., directories,
-		// symlinks, devices, etc.)
-		return fmt.Errorf("moveOrCopyFile: non-regular source file %s (%q)", sfi.Name(), sfi.Mode().String())
+	if ignoreDirectories && sfi.Mode().IsDir() {
+		return
 	}
 	dfi, err := os.Stat(dst)
 	if err != nil {
 		if !os.IsNotExist(err) {
-			return
+			return err
 		}
 	} else {
-		if !(dfi.Mode().IsRegular()) {
-			return fmt.Errorf("moveOrCopyFile: non-regular destination file %s (%q)", dfi.Name(), dfi.Mode().String())
-		}
 		if os.SameFile(sfi, dfi) {
 			return
 		}
@@ -204,6 +199,7 @@ func moveOrCopyFile(src, dst string) (err error) {
 		if err = os.Rename(src, dst); err == nil {
 			return
 		}
+		return err
 	}
 	// Creates a hardlink to the source
 	if err = os.Link(src, dst); err == nil {
