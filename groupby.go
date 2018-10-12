@@ -176,6 +176,7 @@ func MonthAsName(monthStr string) string {
 // Attempt to move the file using os.Rename if the copyOnly flag is false
 // Otherwise, we attempt to create a hard link between the two files.
 func moveOrCopyFile(src, dst string) (err error) {
+	fmt.Println("Moving from=", src, " to=", dst)
 	sfi, err := os.Stat(src)
 	if err != nil {
 		return err
@@ -193,7 +194,6 @@ func moveOrCopyFile(src, dst string) (err error) {
 			return
 		}
 	}
-
 	// User wants to actually move the files
 	if !copyOnly {
 		if err = os.Rename(src, dst); err == nil {
@@ -201,6 +201,7 @@ func moveOrCopyFile(src, dst string) (err error) {
 		}
 		return err
 	}
+	// User wants to -copy-only the files/directories
 	// Creates a hardlink to the source
 	if err = os.Link(src, dst); err == nil {
 		return
@@ -259,7 +260,17 @@ func (v *DirectoryVisitor) Visit(n *Node, depth int) {
 	}
 	var dest string
 	source := path.Join(v.rootDir, n.FileName)
+	sfi, err := os.Stat(source)
+	if os.IsNotExist(err) {
+		// some internal nodes in our tree won't exist
+		return
+	}
+
 	destParts := []string{outputDirectory}
+	if copyOnly && sfi.IsDir() {
+		destParts = []string{}
+	}
+
 	if flatten {
 		dirs = []string{v.rootDir, strings.Join(v.pathParts[:v.maxDepth], "-")}
 		flattenedParent := strings.Join(v.pathParts[:v.maxDepth], "-")
@@ -274,12 +285,33 @@ func (v *DirectoryVisitor) Visit(n *Node, depth int) {
 	rootStat, _ := os.Stat(directory)
 	// use permissions of the root directory
 	perm = rootStat.Mode()
-	err := os.MkdirAll(path.Join(dirs...), perm)
+	err = os.MkdirAll(path.Join(dirs...), perm)
 	if err != nil {
-		// error
+		fmt.Fprintf(os.Stderr, "Failed to create directory %s \n", dirs)
+		os.Exit(1)
+		return
 	}
+
+	if copyOnly && sfi.IsDir() {
+		odabs, _ := filepath.Abs(outputDirectory)
+		dest = path.Join(odabs, dest)
+		source, _ = filepath.Abs(source)
+		// fmt.Fprintf(os.Stderr, "Creating sylink for directory ln -s %s %s \n", source, dest)
+		err = os.Symlink(source, dest)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to create symlink from=%s to =%s", source, dest)
+			os.Exit(1)
+			return
+		}
+		return
+	}
+
 	// Move the file from the source to the directory
-	moveOrCopyFile(source, dest)
+	err = moveOrCopyFile(source, dest)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error while moving/copying file to %s", dest)
+		return
+	}
 	v.previousLevel = depth
 }
 
