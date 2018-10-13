@@ -14,9 +14,9 @@ import (
 
 const (
 	GROUPBY_VERSION    = "0.1.0"
-	SUBDIRECTORY_INNER = "├───"
+	SUBDIRECTORY_INNER = "├──"
 	SUBDIRECTORY_PIPE  = "│"
-	SUBDIRECTORY_LINK  = "└───"
+	SUBDIRECTORY_LINK  = "└──"
 )
 
 var (
@@ -119,19 +119,15 @@ func (p *PrintingVisitor) Visit(n *Node, depth int) {
 		}
 	}
 
+	prefix := SUBDIRECTORY_INNER
 	if !n.HasNext() {
-		if depth == 2 {
-			fmt.Println("└──", MonthAsName(n.FileName))
-		} else {
-			fmt.Println("└──", n.FileName)
-		}
-	} else {
-		if depth == 2 {
-			fmt.Println("├──", MonthAsName(n.FileName))
-		} else {
-			fmt.Println("├──", n.FileName)
-		}
+		prefix = SUBDIRECTORY_LINK
 	}
+
+	filename := FileNameByDepth(n.FileName, depth)
+
+	fmt.Println(prefix, filename)
+
 	p.previousLevel = depth
 }
 
@@ -154,6 +150,21 @@ func MonthAsName(monthStr string) string {
 	}
 
 	return time.Month(monthIdx).String()
+}
+
+// FileNameByDepth returns the filename, potentially modified depending on
+// the provided depth
+//
+// filename is a string containing the name of the file
+//
+// Depth is how deep down the file structure this file will be. The second
+// level is mapped to the month, so the name may be updated to its string representation.
+func FileNameByDepth(filename string, depth int) string {
+	if depth != 2 {
+		return filename
+	}
+
+	return MonthAsName(filename)
 }
 
 // Adapted from: https://stackoverflow.com/a/21067803
@@ -229,11 +240,7 @@ func (v *DirectoryVisitor) Visit(n *Node, depth int) {
 		return
 	}
 
-	if depth == 2 {
-		v.pathParts[depth-1] = MonthAsName(n.FileName)
-	} else {
-		v.pathParts[depth-1] = n.FileName
-	}
+	v.pathParts[depth-1] = FileNameByDepth(n.FileName, depth)
 
 	// We're probably at a month
 	if depth == 3 && !n.HasNext() {
