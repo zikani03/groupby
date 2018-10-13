@@ -6,19 +6,26 @@ import (
 
 func TestFileNameByDepth(t *testing.T) {
 	tests := []struct {
-		filename string
-		depth    int
-		expected string
+		filename    string
+		depth       int
+		expandMonth bool
+		expected    string
 	}{
-		{"03", 1, "03"},
-		{"03", 2, "March"},
-		{"Non-Number", 2, "Non-Number"},
+		{"1", 1, true, "1"},
+		{"1", 2, true, "January"},
+		{"03", 1, true, "03"},
+		{"03", 2, true, "March"},
+		{"03", 2, false, "03"},
+		{"Non-Number", 2, true, "Non-Number"},
 	}
 
 	for _, test := range tests {
+		// expandMonth is a global variable for script config
+		expandMonth = test.expandMonth
+
 		result := FileNameByDepth(test.filename, test.depth)
 		if result != test.expected {
-			t.Errorf("FileNameByDepth(\"%s\", %d) expects \"%s\", got \"%s\"", test.filename, test.depth, test.expected, result)
+			t.Errorf("FileNameByDepth(\"%s\", %d) with expectMonth: %t expects \"%s\", got \"%s\"", test.filename, test.depth, test.expandMonth, test.expected, result)
 		}
 	}
 }

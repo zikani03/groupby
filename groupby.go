@@ -31,6 +31,7 @@ var (
 	month             bool
 	day               bool
 	flatten           bool
+	expandMonth       bool
 	includeHidden     bool
 	dryRun            bool
 	excludePattern    string
@@ -52,6 +53,7 @@ func init() {
 	flag.BoolVar(&dryRun, "dry-run", false, "\tOnly show the output of how the files will be grouped")
 	flag.BoolVar(&dryRun, "preview", false, "\tOnly show the output of how the files will be grouped")
 	flag.BoolVar(&dryRun, "p", false, "\tOnly show the output of how the files will be grouped (shorthand)")
+	flag.BoolVar(&expandMonth, "expand-month", true, "\tUse the English name of the month (e.g. March) instead of the numeric value (default true)")
 	flag.BoolVar(&includeHidden, "a", false, "\tInclude hidden files and directories (starting with .)")
 	// flag.String(&exclude, "exclude", "Exclude files or directory matching a specified pattern")
 	// flag.BoolVar(&recurse, "R", "recurse" "Group files in subdirectories")
@@ -160,7 +162,7 @@ func MonthAsName(monthStr string) string {
 // Depth is how deep down the file structure this file will be. The second
 // level is mapped to the month, so the name may be updated to its string representation.
 func FileNameByDepth(filename string, depth int) string {
-	if depth != 2 {
+	if depth != 2 || expandMonth == false {
 		return filename
 	}
 
