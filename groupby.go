@@ -135,39 +135,25 @@ func (p *PrintingVisitor) Visit(n *Node, depth int) {
 	p.previousLevel = depth
 }
 
+// MonthAsName returns the full month name for the provided monthStr
+//
+// monthStr is a string usually containing the numeric representation of a
+// month (with January=1, February=2, etc.)
+//
+// If monthStr cannot be casted to an int, returns the provided parameter. If
+// monthStr is cast to an int that's not in the range [1, 12] inclusive,
+// returns an empty string
 func MonthAsName(monthStr string) string {
 	monthIdx, err := strconv.Atoi(monthStr)
 	if err != nil {
 		return monthStr
 	}
 
-	switch monthIdx {
-	case 1:
-		return "January"
-	case 2:
-		return "February"
-	case 3:
-		return "March"
-	case 4:
-		return "April"
-	case 5:
-		return "May"
-	case 6:
-		return "June"
-	case 7:
-		return "July"
-	case 8:
-		return "August"
-	case 9:
-		return "September"
-	case 10:
-		return "October"
-	case 11:
-		return "November"
-	case 12:
-		return "December"
+	if monthIdx < 1 || monthIdx > 12 {
+		return ""
 	}
-	return ""
+
+	return time.Month(monthIdx).String()
 }
 
 // Adapted from: https://stackoverflow.com/a/21067803
