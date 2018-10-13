@@ -14,9 +14,9 @@ import (
 
 const (
 	GROUPBY_VERSION    = "0.1.0"
-	SUBDIRECTORY_INNER = "├───"
+	SUBDIRECTORY_INNER = "├──"
 	SUBDIRECTORY_PIPE  = "│"
-	SUBDIRECTORY_LINK  = "└───"
+	SUBDIRECTORY_LINK  = "└──"
 )
 
 var (
@@ -31,6 +31,7 @@ var (
 	month             bool
 	day               bool
 	flatten           bool
+	expandMonth       bool
 	includeHidden     bool
 	dryRun            bool
 	excludePattern    string
@@ -52,6 +53,7 @@ func init() {
 	flag.BoolVar(&dryRun, "dry-run", false, "\tOnly show the output of how the files will be grouped")
 	flag.BoolVar(&dryRun, "preview", false, "\tOnly show the output of how the files will be grouped")
 	flag.BoolVar(&dryRun, "p", false, "\tOnly show the output of how the files will be grouped (shorthand)")
+	flag.BoolVar(&expandMonth, "expand-month", true, "\tUse the English name of the month (e.g. March) instead of the numeric value (default true)")
 	flag.BoolVar(&includeHidden, "a", false, "\tInclude hidden files and directories (starting with .)")
 	// flag.String(&exclude, "exclude", "Exclude files or directory matching a specified pattern")
 	// flag.BoolVar(&recurse, "R", "recurse" "Group files in subdirectories")
@@ -119,55 +121,52 @@ func (p *PrintingVisitor) Visit(n *Node, depth int) {
 		}
 	}
 
+	prefix := SUBDIRECTORY_INNER
 	if !n.HasNext() {
-		if depth == 2 {
-			fmt.Println("└──", MonthAsName(n.FileName))
-		} else {
-			fmt.Println("└──", n.FileName)
-		}
-	} else {
-		if depth == 2 {
-			fmt.Println("├──", MonthAsName(n.FileName))
-		} else {
-			fmt.Println("├──", n.FileName)
-		}
+		prefix = SUBDIRECTORY_LINK
 	}
+
+	filename := FileNameByDepth(n.FileName, depth)
+
+	fmt.Println(prefix, filename)
+
 	p.previousLevel = depth
 }
 
+// MonthAsName returns the full month name for the provided monthStr
+//
+// monthStr is a string usually containing the numeric representation of a
+// month (with January=1, February=2, etc.)
+//
+// If monthStr cannot be casted to an int, returns the provided parameter. If
+// monthStr is cast to an int that's not in the range [1, 12] inclusive,
+// returns an empty string
 func MonthAsName(monthStr string) string {
 	monthIdx, err := strconv.Atoi(monthStr)
 	if err != nil {
 		return monthStr
 	}
 
-	switch monthIdx {
-	case 1:
-		return "January"
-	case 2:
-		return "February"
-	case 3:
-		return "March"
-	case 4:
-		return "April"
-	case 5:
-		return "May"
-	case 6:
-		return "June"
-	case 7:
-		return "July"
-	case 8:
-		return "August"
-	case 9:
-		return "September"
-	case 10:
-		return "October"
-	case 11:
-		return "November"
-	case 12:
-		return "December"
+	if monthIdx < 1 || monthIdx > 12 {
+		return ""
 	}
-	return ""
+
+	return time.Month(monthIdx).String()
+}
+
+// FileNameByDepth returns the filename, potentially modified depending on
+// the provided depth
+//
+// filename is a string containing the name of the file
+//
+// Depth is how deep down the file structure this file will be. The second
+// level is mapped to the month, so the name may be updated to its string representation.
+func FileNameByDepth(filename string, depth int) string {
+	if depth != 2 || expandMonth == false {
+		return filename
+	}
+
+	return MonthAsName(filename)
 }
 
 // Adapted from: https://stackoverflow.com/a/21067803
@@ -243,11 +242,7 @@ func (v *DirectoryVisitor) Visit(n *Node, depth int) {
 		return
 	}
 
-	if depth == 2 {
-		v.pathParts[depth-1] = MonthAsName(n.FileName)
-	} else {
-		v.pathParts[depth-1] = n.FileName
-	}
+	v.pathParts[depth-1] = FileNameByDepth(n.FileName, depth)
 
 	// We're probably at a month
 	if depth == 3 && !n.HasNext() {
