@@ -1,5 +1,6 @@
-groupby
-vendor
-target
+coverage.out
 dist
+groupby
+target
 tmp
+vendor
