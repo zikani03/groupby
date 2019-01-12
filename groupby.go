@@ -1,6 +1,6 @@
 package main
 
-// Currently 18.2% test coverage
+// Currently 19.1% test coverage
 
 import (
 	"flag"
