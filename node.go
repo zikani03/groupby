@@ -21,6 +21,7 @@ func NewNode(fileName string, year int, month time.Month, day int) *Node {
 		Children: nil,
 	}
 }
+
 func (n *Node) HasNext() bool {
 	return n.Next != nil
 }
