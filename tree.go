@@ -9,8 +9,10 @@ import (
 )
 
 type Tree struct {
-	Root     *Node
-	MaxDepth int
+	Root           *Node
+	MaxDepth       int
+	directoryCount int
+	fileCount      int
 }
 
 func NewTree(directory string, maxDepth int) *Tree {
@@ -20,8 +22,10 @@ func NewTree(directory string, maxDepth int) *Tree {
 		log.Fatal(err)
 	}
 	return &Tree{
-		Root:     NewNode(dirPath, year, month, day),
-		MaxDepth: maxDepth,
+		Root:           NewNode(dirPath, year, month, day),
+		MaxDepth:       maxDepth,
+		directoryCount: 0,
+		fileCount:      0,
 	}
 }
 
@@ -56,6 +60,12 @@ func (t *Tree) AddEntry(file os.FileInfo) {
 
 	if strings.HasPrefix(file.Name(), ".") && !includeHidden {
 		return
+	}
+
+	if file.IsDir() {
+		t.directoryCount++
+	} else {
+		t.fileCount++
 	}
 
 	year, month, day := GetFileInfoYMD(file)
@@ -101,4 +111,14 @@ func (t *Tree) AddEntry(file os.FileInfo) {
 
 func (t *Tree) Visit(visitor NodeVisitor) {
 	t.Root.Visit(visitor, 0)
+}
+
+// Directories returns number of directories in the tree
+func (t *Tree) Directories() int {
+	return t.directoryCount
+}
+
+// Files returns number of files in the tree
+func (t *Tree) Files() int {
+	return t.fileCount
 }

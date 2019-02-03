@@ -188,6 +188,7 @@ func main() {
 	printingVisitor := NewPrintingVisitor()
 	if dryRun {
 		tree.Visit(printingVisitor)
+		fmt.Printf("\n%d directories, %d files\n", tree.Directories(), tree.Files())
 		os.Exit(-1)
 		return
 	}
