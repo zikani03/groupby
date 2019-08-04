@@ -102,7 +102,9 @@ func FileNameByDepth(filename string, depth int) string {
 // Attempt to move the file using os.Rename if the copyOnly flag is false
 // Otherwise, we attempt to create a hard link between the two files.
 func moveOrCopyFile(src, dst string) (err error) {
-	fmt.Println("Moving from=", src, " to=", dst)
+	if verbose {
+		fmt.Println("Moving from=", src, " to=", dst)
+	}
 	sfi, err := os.Stat(src)
 	if err != nil {
 		return err
