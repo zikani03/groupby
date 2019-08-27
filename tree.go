@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 )
 
@@ -36,6 +37,15 @@ func (t *Tree) Build() error {
 		return err
 	}
 
+	var regularExpression *regexp.Regexp
+	if filterPattern != "" {
+		regularExpression, err = regexp.Compile(filterPattern)
+		if err != nil {
+			fmt.Println("Invalid regular expression specified")
+			os.Exit(-1)
+		}
+	}
+
 	files, err := file.Readdir(-1)
 
 	if err != nil {
@@ -47,6 +57,9 @@ func (t *Tree) Build() error {
 	}
 
 	for _, f := range files {
+		if !regularExpression.MatchString(f.Name()) {
+			continue
+		}
 		if ignoreDirectories && f.IsDir() {
 			continue
 		} else {
