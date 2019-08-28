@@ -41,8 +41,7 @@ func (t *Tree) Build() error {
 	if filterPattern != "" {
 		regularExpression, err = regexp.Compile(filterPattern)
 		if err != nil {
-			fmt.Println("Invalid regular expression specified")
-			os.Exit(-1)
+			return groupbyError("Invalid regular expression specified in -e/-pattern")
 		}
 	}
 

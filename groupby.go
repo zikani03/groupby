@@ -187,8 +187,8 @@ func main() {
 	var tree = NewTree(directory, depth)
 	err := tree.Build()
 	if err != nil {
-		fmt.Println("Failed to build directory tree")
-		os.Exit(1)
+		fmt.Printf("Error: %s", err)
+		os.Exit(-1)
 	}
 	printingVisitor := NewPrintingVisitor()
 	if dryRun {
