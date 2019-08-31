@@ -33,6 +33,7 @@ var (
 	includeHidden     bool
 	dryRun            bool
 	excludePattern    string
+	filterPattern     string = ""
 	verbose           bool
 	version           bool
 )
@@ -40,6 +41,8 @@ var (
 func init() {
 	flag.StringVar(&directory, "d", "", "\tDirectory containing files to group")
 	flag.StringVar(&outputDirectory, "o", "", "\tDirectory to move grouped files to")
+	flag.StringVar(&filterPattern, "e", "", "\tOnly group files matching the given pattern")
+	flag.StringVar(&filterPattern, "pattern", "", "\tOnly group files matching the given pattern")
 	flag.BoolVar(&copyOnly, "copy-only", false, "\tOnly copy files, do not move them")
 	flag.BoolVar(&ignoreDirectories, "ignore-directories", false, "\tIgnore directories and only group files")
 	flag.BoolVar(&created, "created", false, "\tGroup files by the date they were created")
@@ -184,8 +187,8 @@ func main() {
 	var tree = NewTree(directory, depth)
 	err := tree.Build()
 	if err != nil {
-		fmt.Println("Failed to build directory tree")
-		os.Exit(1)
+		fmt.Printf("Error: %s", err)
+		os.Exit(-1)
 	}
 	printingVisitor := NewPrintingVisitor()
 	if dryRun {
