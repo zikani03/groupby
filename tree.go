@@ -56,7 +56,7 @@ func (t *Tree) Build() error {
 	}
 
 	for _, f := range files {
-		if !regularExpression.MatchString(f.Name()) {
+		if regularExpression != nil && !regularExpression.MatchString(f.Name()) {
 			continue
 		}
 		if ignoreDirectories && f.IsDir() {
