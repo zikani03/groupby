@@ -20,7 +20,7 @@ func NewTree(directory string, maxDepth int) *Tree {
 	year, month, day := GetYMD(directory)
 	dirPath, err := filepath.Abs(directory)
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 	return &Tree{
 		Root:           NewNode(dirPath, year, month, day),

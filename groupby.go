@@ -11,10 +11,10 @@ import (
 )
 
 const (
-	GROUPBY_VERSION    = "0.1.0"
-	SUBDIRECTORY_INNER = "├──"
-	SUBDIRECTORY_PIPE  = "│"
-	SUBDIRECTORY_LINK  = "└──"
+	Version           = "0.1.0"
+	SubdirectoryInner = "├──"
+	SubdirectoryPipe  = "│"
+	SubdirectoryLink  = "└──"
 )
 
 var (
@@ -160,7 +160,7 @@ func main() {
 	flag.Parse()
 
 	if version {
-		fmt.Println("groupby ", GROUPBY_VERSION, " - Group files and directories by the date they were created or modified")
+		fmt.Println("groupby ", Version, " - Group files and directories by the date they were created or modified")
 		fmt.Println("By Zikani Nyirenda Mwase ")
 		os.Exit(0)
 	}

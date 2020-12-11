@@ -29,9 +29,9 @@ func (p *PrintingVisitor) Visit(n *Node, depth int) {
 		}
 	}
 
-	prefix := SUBDIRECTORY_INNER
+	prefix := SubdirectoryInner
 	if !n.HasNext() {
-		prefix = SUBDIRECTORY_LINK
+		prefix = SubdirectoryLink
 	}
 
 	filename := FileNameByDepth(n.FileName, depth)
