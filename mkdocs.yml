@@ -1,0 +1,38 @@
+# Site configuration
+site_name: groupby
+site_description: Group files into directories by year, month or day created (or modified).
+site_author: Zikani Nyirenda Mwase
+site_url: https://labs.zikani.me/groupby
+repo_name: zikani03/groupby
+repo_url: https://github.com/zikani03/groupby
+# edit_uri: edit/master/docs/
+# docs_dir: docs
+
+# Theme Configuration
+theme:
+  name: material
+
+# Navigation
+nav:
+  - Home: index.md
+  - Usage: usage.md
+  - Installation:
+    # - From binary: install-binary.md
+    - From source: install-source.md
+
+# Extensions
+markdown_extensions:
+  # - markdown_include.include:
+  #     base_path: docs
+  - admonition
+  - codehilite
+  - footnotes
+  - meta
+  - pymdownx.details
+  - pymdownx.tabbed
+  - pymdownx.superfences
+  - pymdownx.emoji:
+      emoji_index: !!python/name:materialx.emoji.twemoji
+      emoji_generator: !!python/name:materialx.emoji.to_svg
+  - toc:
+      permalink: true
