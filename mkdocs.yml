@@ -17,7 +17,7 @@ nav:
   - Home: index.md
   - Usage: usage.md
   - Installation:
-    # - From binary: install-binary.md
+    - From binary: install-binary.md
     - From source: install-source.md
 
 # Extensions

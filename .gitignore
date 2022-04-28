@@ -4,3 +4,6 @@ groupby
 target
 tmp
 vendor
+venv
+site
+build
