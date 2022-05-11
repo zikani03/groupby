@@ -11,7 +11,6 @@ import (
 )
 
 const (
-	Version           = "0.1.0"
 	SubdirectoryInner = "├──"
 	SubdirectoryPipe  = "│"
 	SubdirectoryLink  = "└──"
@@ -35,7 +34,8 @@ var (
 	excludePattern    string
 	filterPattern     string = ""
 	verbose           bool
-	version           bool
+	showVersion       bool
+	version           string = "0.0.0"
 )
 
 func init() {
@@ -60,7 +60,7 @@ func init() {
 	// flag.BoolVar(&recurse, "R", "recurse" "Group files in subdirectories")
 	flag.BoolVar(&verbose, "verbose", false, "\tShow verbose output")
 	flag.BoolVar(&verbose, "v", false, "\tShow verbose output")
-	flag.BoolVar(&version, "version", false, "\tShow the program version and exit")
+	flag.BoolVar(&showVersion, "version", false, "\tShow the program version and exit")
 }
 
 // MonthAsName returns the full month name for the provided monthStr
@@ -159,8 +159,8 @@ func GetFileInfoYMD(fileInfo os.FileInfo) (int, time.Month, int) {
 func main() {
 	flag.Parse()
 
-	if version {
-		fmt.Println("groupby ", Version, " - Group files and directories by the date they were created or modified")
+	if showVersion {
+		fmt.Println("groupby ", version, " - Group files and directories by the date they were created or modified")
 		fmt.Println("By Zikani Nyirenda Mwase ")
 		os.Exit(0)
 	}
