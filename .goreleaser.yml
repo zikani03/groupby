@@ -1,4 +1,5 @@
 # Goreleaser configuration for groupby
+project_name: groupby
 builds:
 - env:
   - CGO_ENABLED=0
